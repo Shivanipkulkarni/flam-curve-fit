@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Curve Decoder — Flam R&D Assignment</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --bg: #0B0F1A;
+    --panel: #111826;
+    --grid: #1D2637;
+    --text: #E7ECF5;
+    --dim: #7C8AA5;
+    --amber: #FFB86B;
+    --cyan: #5EEAD4;
+    --magenta: #F472B6;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:'Space Grotesk',sans-serif;}
+  .wrap{max-width:1040px;margin:0 auto;padding:48px 24px 96px;}
+
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--amber);margin-bottom:10px;}
+  h1{font-size:clamp(28px,4vw,42px);line-height:1.15;margin:0 0 14px;font-weight:700;}
+  h1 span{color:var(--cyan);}
+  .sub{color:var(--dim);font-size:16px;max-width:640px;line-height:1.6;margin-bottom:40px;}
+
+  .panel{background:var(--panel);border:1px solid var(--grid);border-radius:14px;
+    padding:28px;margin-bottom:28px;}
+
+  .scope-wrap{display:grid;grid-template-columns:1fr 260px;gap:24px;}
+  @media(max-width:760px){.scope-wrap{grid-template-columns:1fr;}}
+
+  canvas{width:100%;display:block;background:#080B13;border-radius:10px;border:1px solid var(--grid);}
+
+  .controls{display:flex;flex-direction:column;gap:20px;}
+  .control label{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;
+    font-size:12px;color:var(--dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;}
+  .control label .val{color:var(--text);font-weight:700;}
+  input[type=range]{width:100%;-webkit-appearance:none;height:4px;border-radius:2px;
+    background:var(--grid);outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;
+    border-radius:50%;background:var(--cyan);cursor:pointer;box-shadow:0 0 12px rgba(94,234,212,.6);}
+  input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;
+    background:var(--cyan);border:none;cursor:pointer;box-shadow:0 0 12px rgba(94,234,212,.6);}
+
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;}
+  button{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.05em;
+    text-transform:uppercase;background:transparent;color:var(--text);
+    border:1px solid var(--grid);border-radius:8px;padding:10px 14px;cursor:pointer;
+    transition:border-color .2s, color .2s;}
+  button:hover{border-color:var(--cyan);color:var(--cyan);}
+  button.primary{background:var(--cyan);color:#04241F;border-color:var(--cyan);font-weight:700;}
+  button.primary:hover{opacity:.9;color:#04241F;}
+  button.active{border-color:var(--magenta);color:var(--magenta);}
+
+  .readout{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);
+    display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--grid);}
+  .readout b{color:var(--cyan);font-weight:700;}
+
+  .insight{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  @media(max-width:760px){.insight{grid-template-columns:1fr;}}
+  .insight h3{font-size:15px;margin:0 0 10px;color:var(--amber);
+    font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.05em;}
+  .insight p{color:var(--dim);font-size:14px;line-height:1.7;margin:0;}
+  .insight code{color:var(--cyan);background:#0A0F1A;padding:2px 6px;border-radius:4px;
+    font-family:'JetBrains Mono',monospace;font-size:13px;}
+
+  .footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;
+    margin-top:8px;}
+  .badge{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);}
+  .badge b{color:var(--amber);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Flam R&D / AI — Assignment Companion</div>
+  <h1>The curve was never bent.<br><span>It was just rotated.</span></h1>
+  <p class="sub">1500 scattered (x, y) points, three hidden variables, no visible order.
+  The equation looked like arbitrary distortion — until you rotate the frame back and
+  a plain sine wave falls out. Drag the sliders, or hit <b>Unrotate</b> to watch it happen.</p>
+
+  <div class="panel">
+    <div class="scope-wrap">
+      <canvas id="scope" width="900" height="560"></canvas>
+      <div class="controls">
+        <div class="control">
+          <label>θ (theta) <span class="val" id="vTheta">30.0°</span></label>
+          <input type="range" id="theta" min="0" max="50" step="0.1" value="30">
+        </div>
+        <div class="control">
+          <label>M <span class="val" id="vM">0.0300</span></label>
+          <input type="range" id="M" min="-0.05" max="0.05" step="0.0005" value="0.03">
+        </div>
+        <div class="control">
+          <label>X <span class="val" id="vX">55.0</span></label>
+          <input type="range" id="X" min="0" max="100" step="0.5" value="55">
+        </div>
+
+        <div class="btnrow">
+          <button class="primary" id="btnFit">Snap to fitted values</button>
+        </div>
+        <div class="btnrow">
+          <button id="btnRotate">Unrotate → reveal sine wave</button>
+        </div>
+
+        <div class="readout">
+          <span>mean L1 residual</span><b id="l1out">—</b>
+        </div>
+        <div class="readout">
+          <span>points shown</span><b>250 / 1500</b>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel insight">
+    <div>
+      <h3>01 — What's actually hidden here</h3>
+      <p>Strip out θ and the translation, and the equation is just
+      <code>v(t) = e^(M|t|)·sin(0.3t)</code> — an amplitude-modulated sine wave,
+      the most ordinary signal there is. Everything else is a 2D rotation and a shift
+      dressed on top to obscure it.</p>
+    </div>
+    <div>
+      <h3>02 — Why order didn't matter</h3>
+      <p>The 1500 points arrived shuffled, not traced in order. Rotating each point
+      backward by <code>−θ</code> recovers its own <code>t</code> directly —
+      <code>u = (x−X)cosθ + (y−42)sinθ</code> — so no per-point unknowns were needed,
+      just one global (θ, M, X) fit.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="badge">Fitted: <b>θ = 30.0°</b> · <b>M = 0.0300</b> · <b>X = 55.0</b> · mean L1 ≈ <b>0.010</b></div>
+    <div class="badge">github.com/Shivanipkulkarni/flam-curve-fit</div>
+  </div>
+
+</div>
+
+<script>
+const DATA_X= [94.117, 70.608, 69.404, 73.67, 66.39, 103.151, 60.296, 102.224, 81.81, 75.23, 108.775, 108.591, 96.456, 79.861, 64.544, 76.151, 93.617, 94.229, 75.307, 83.208, 74.815, 75.323, 77.783, 77.838, 106.918, 68.872, 103.169, 63.152, 85.957, 94.595, 90.785, 70.797, 88.245, 92.295, 79.448, 95.35, 90.411, 97.887, 92.593, 97.994, 90.352, 89.387, 87.047, 89.937, 98.508, 85.45, 101.097, 70.626, 90.301, 68.916, 70.168, 75.393, 90.977, 76.588, 104.356, 77.037, 109.027, 91.827, 108.696, 97.713, 72.938, 72.783, 75.591, 100.707, 82.529, 104.24, 91.259, 68.64, 62.684, 91.097, 94.69, 77.551, 100.743, 77.129, 62.317, 106.008, 91.571, 95.139, 90.533, 80.22, 106.319, 93.971, 89.585, 67.309, 71.939, 106.435, 105.923, 81.773, 65.542, 91.197, 74.028, 60.185, 74.677, 85.559, 67.832, 92.861, 74.763, 67.773, 87.576, 91.963, 84.656, 75.329, 72.998, 73.193, 92.676, 95.039, 90.824, 62.005, 73.572, 77.754, 75.272, 76.692, 72.934, 71.181, 72.615, 94.184, 64.373, 75.932, 93.756, 94.813, 96.373, 91.487, 65.846, 108.476, 67.704, 73.643, 61.839, 60.171, 70.239, 88.906, 64.685, 89.691, 70.276, 103.509, 82.134, 73.127, 75.193, 86.998, 106.547, 96.259, 90.155, 91.924, 69.892, 84.741, 67.163, 69.888, 91.993, 75.698, 91.106, 63.733, 104.548, 90.972, 88.243, 99.257, 99.28, 71.771, 78.067, 73.951, 82.077, 100.2, 60.162, 78.129, 90.681, 96.787, 62.874, 60.975, 68.32, 87.151, 78.261, 70.11, 100.72, 63.852, 72.755, 64.597, 83.242, 96.435, 74.182, 80.389, 86.429, 102.309, 74.563, 90.333, 79.136, 71.381, 105.564, 80.351, 91.049, 98.126, 91.268, 107.678, 76.194, 89.375, 93.466, 90.383, 63.207, 70.85, 93.897, 83.468, 84.02, 63.281, 59.732, 86.295, 78.656, 75.091, 109.161, 82.168, 90.742, 104.916, 64.062, 91.732, 80.578, 64.263, 83.447, 91.812, 100.83, 74.498, 73.332, 84.717, 81.342, 90.173, 93.541, 61.391, 91.389, 68.708, 89.038, 88.989, 89.701, 92.587, 65.969, 72.661, 75.645, 90.31, 70.426, 80.172, 90.583, 93.609, 69.413, 73.71, 71.678, 69.649, 89.392, 90.686, 91.836, 82.881, 73.835, 92.12, 62.29, 76.017, 103.563, 66.009];
+const DATA_Y= [69.353, 49.257, 48.466, 53.383, 47.554, 66.845, 46.328, 67.277, 57.759, 55.742, 66.861, 66.59, 69.603, 57.891, 47.298, 56.673, 69.011, 69.409, 55.834, 57.567, 55.202, 55.853, 57.58, 57.598, 65.777, 48.219, 66.837, 47.1, 57.303, 69.55, 61.16, 49.417, 57.727, 66.855, 57.878, 69.68, 60.17, 69.218, 67.579, 69.181, 60.038, 58.553, 57.376, 59.267, 68.988, 57.317, 67.82, 49.272, 59.93, 48.238, 48.924, 55.933, 61.79, 56.997, 66.339, 57.264, 67.387, 65.284, 66.737, 69.277, 52.139, 51.886, 56.151, 68.008, 57.664, 66.384, 62.873, 48.127, 47.018, 62.229, 69.577, 57.496, 67.991, 57.31, 46.944, 65.851, 64.215, 69.662, 60.461, 57.887, 65.804, 69.27, 58.778, 47.732, 50.654, 65.792, 65.867, 57.763, 47.428, 62.619, 53.99, 46.281, 55.006, 57.312, 47.863, 68.087, 55.129, 47.847, 57.486, 65.797, 57.381, 55.861, 52.238, 52.565, 67.751, 69.649, 61.28, 46.874, 53.215, 57.57, 55.792, 57.065, 52.133, 49.78, 51.621, 69.388, 47.276, 56.484, 69.123, 69.607, 69.617, 63.847, 47.47, 66.454, 47.829, 53.337, 46.834, 46.275, 48.975, 58.122, 47.316, 58.913, 49.001, 66.686, 57.718, 52.453, 55.698, 57.369, 65.783, 69.634, 59.643, 65.656, 48.743, 57.372, 47.7, 48.741, 65.904, 56.26, 62.263, 47.189, 66.267, 61.772, 57.725, 68.676, 68.666, 50.441, 57.666, 53.861, 57.725, 68.248, 46.271, 57.682, 60.853, 69.537, 47.053, 46.583, 48.012, 57.393, 57.715, 48.885, 68.002, 47.206, 51.841, 47.305, 57.563, 69.607, 54.243, 57.882, 57.314, 67.236, 54.838, 59.997, 57.855, 49.989, 65.948, 57.883, 62.049, 69.133, 62.911, 65.918, 56.708, 58.54, 68.873, 60.106, 47.109, 49.464, 69.222, 57.531, 57.456, 47.121, 46.07, 57.308, 57.794, 55.571, 67.789, 57.713, 61.03, 66.138, 47.235, 64.898, 57.873, 47.262, 57.534, 65.225, 67.949, 54.74, 52.803, 57.375, 57.811, 59.676, 68.944, 46.713, 63.426, 48.153, 58.226, 58.186, 58.926, 67.568, 47.488, 51.693, 56.207, 59.949, 49.113, 57.888, 60.589, 69.004, 48.471, 53.452, 50.327, 48.599, 58.559, 60.866, 65.321, 57.614, 53.665, 66.334, 46.938, 56.56, 66.663, 47.494];
+
+const FIT = {theta: 30.0, M: 0.03, X: 55.0};
+
+const cv = document.getElementById('scope');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+const thetaEl = document.getElementById('theta');
+const MEl = document.getElementById('M');
+const XEl = document.getElementById('X');
+const vTheta = document.getElementById('vTheta');
+const vM = document.getElementById('vM');
+const vX = document.getElementById('vX');
+const l1out = document.getElementById('l1out');
+const btnFit = document.getElementById('btnFit');
+const btnRotate = document.getElementById('btnRotate');
+
+let rotateProgress = 0; // 0 = normal frame, 1 = fully unrotated (u,v) frame
+let animating = false;
+
+function v_of(t, M){ return Math.exp(M*Math.abs(t)) * Math.sin(0.3*t); }
+
+function curvePoints(theta, M, X, n){
+  const rad = theta*Math.PI/180;
+  const pts = [];
+  for(let i=0;i<n;i++){
+    const t = 6 + (60-6)*i/(n-1);
+    const v = v_of(t, M);
+    const x = t*Math.cos(rad) - v*Math.sin(rad) + X;
+    const y = 42 + t*Math.sin(rad) + v*Math.cos(rad);
+    pts.push([x,y,t,v]);
+  }
+  return pts;
+}
+
+function meanL1(theta, M, X){
+  const rad = theta*Math.PI/180;
+  const curve = curvePoints(rad*180/Math.PI, M, X, 400);
+  let total = 0;
+  for(let i=0;i<DATA_X.length;i++){
+    let best = Infinity;
+    for(let j=0;j<curve.length;j++){
+      const d = Math.abs(curve[j][0]-DATA_X[i]) + Math.abs(curve[j][1]-DATA_Y[i]);
+      if(d<best) best = d;
+    }
+    total += best;
+  }
+  return total/DATA_X.length;
+}
+
+function project(x, y, xr, yr){
+  // map data-space coords to canvas pixel coords, with margin
+  const m = 60;
+  const px = m + (x - xr[0])/(xr[1]-xr[0]) * (W-2*m);
+  const py = H - m - (y - yr[0])/(yr[1]-yr[0]) * (H-2*m);
+  return [px, py];
+}
+
+function drawGrid(){
+  ctx.strokeStyle = '#1D2637';
+  ctx.lineWidth = 1;
+  for(let i=0;i<=10;i++){
+    const gx = 60 + i*(W-120)/10;
+    ctx.beginPath(); ctx.moveTo(gx,40); ctx.lineTo(gx,H-40); ctx.stroke();
+    const gy = 40 + i*(H-80)/10;
+    ctx.beginPath(); ctx.moveTo(60,gy); ctx.lineTo(W-60,gy); ctx.stroke();
+  }
+}
+
+function render(){
+  const theta = parseFloat(thetaEl.value);
+  const M = parseFloat(MEl.value);
+  const X = parseFloat(XEl.value);
+  vTheta.textContent = theta.toFixed(1)+'°';
+  vM.textContent = M.toFixed(4);
+  vX.textContent = X.toFixed(1);
+
+  ctx.clearRect(0,0,W,H);
+  drawGrid();
+
+  const rad = theta*Math.PI/180;
+  const p = rotateProgress;
+
+  // Build the two representations: rotated (real) frame and unrotated (u,v) frame.
+  const n = 400;
+  const realPts = [];
+  const unrotPts = [];
+  for(let i=0;i<n;i++){
+    const t = 6 + (60-6)*i/(n-1);
+    const vv = v_of(t, M);
+    const rx = t*Math.cos(rad) - vv*Math.sin(rad) + X;
+    const ry = 42 + t*Math.sin(rad) + vv*Math.cos(rad);
+    const ux = t + X; // unrotated frame: plot (t, v) directly, offset by X so it's comparable in x-range
+    const uy = 42 + vv;
+    realPts.push([rx,ry]);
+    unrotPts.push([ux,uy]);
+  }
+
+  // interpolate between real and unrotated for the animation
+  const mixed = realPts.map((pt,i)=>{
+    const u = unrotPts[i];
+    return [pt[0]*(1-p) + u[0]*p, pt[1]*(1-p) + u[1]*p];
+  });
+
+  // axis ranges cover both frames comfortably
+  const allX = mixed.map(pp=>pp[0]).concat(DATA_X);
+  const allY = mixed.map(pp=>pp[1]).concat(DATA_Y);
+  const xr = [Math.min(...allX)-5, Math.max(...allX)+5];
+  const yr = [Math.min(...allY)-5, Math.max(...allY)+5];
+
+  // data points (fade out as we unrotate, since they only exist in real frame)
+  ctx.globalAlpha = 1-p;
+  ctx.fillStyle = '#F472B633';
+  DATA_X.forEach((dx,i)=>{
+    const [px,py] = project(dx, DATA_Y[i], xr, yr);
+    ctx.beginPath(); ctx.arc(px,py,2.4,0,7); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  // curve
+  ctx.strokeStyle = p<0.5 ? '#5EEAD4' : '#F472B6';
+  ctx.lineWidth = 2.4;
+  ctx.shadowColor = ctx.strokeStyle;
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  mixed.forEach((pt,i)=>{
+    const [px,py] = project(pt[0], pt[1], xr, yr);
+    if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  });
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // label
+  ctx.fillStyle = '#7C8AA5';
+  ctx.font = '12px "JetBrains Mono", monospace';
+  ctx.fillText(p<0.05 ? 'rotated frame — the puzzle as given' :
+               p>0.95 ? 'unrotated frame — v(t) = e^(M|t|)·sin(0.3t)' :
+               'unrotating…', 70, 30);
+
+  l1out.textContent = meanL1(theta, M, X).toFixed(4);
+}
+
+[thetaEl, MEl, XEl].forEach(el => el.addEventListener('input', render));
+
+btnFit.addEventListener('click', ()=>{
+  thetaEl.value = FIT.theta; MEl.value = FIT.M; XEl.value = FIT.X;
+  render();
+});
+
+btnRotate.addEventListener('click', ()=>{
+  if(animating) return;
+  animating = true;
+  const target = rotateProgress > 0.5 ? 0 : 1;
+  const start = rotateProgress;
+  const t0 = performance.now();
+  const dur = 1400;
+  btnRotate.classList.toggle('active', target===1);
+  function step(now){
+    const p = Math.min(1, (now-t0)/dur);
+    const eased = p<0.5 ? 2*p*p : 1-Math.pow(-2*p+2,2)/2;
+    rotateProgress = start + (target-start)*eased;
+    render();
+    if(p<1) requestAnimationFrame(step);
+    else animating = false;
+  }
+  requestAnimationFrame(step);
+});
+
+// init to fitted values
+thetaEl.value = FIT.theta; MEl.value = FIT.M; XEl.value = FIT.X;
+render();
+</script>
+</body>
+</html>
