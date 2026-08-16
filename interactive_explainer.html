@@ -2,93 +2,135 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Curve Decoder — Flam R&D Assignment</title>
+<title>Flam R&D · Curve Parameter Recovery</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+:root{
+  --bg:#f6f7f8; --panel:#ffffff; --panel2:#fafafa; --border:#d9dde3;
+  --grid:#e3e6ea; --text:#20242a; --muted:#68717d;
+  --accent:#1f2937; --blue:#2563eb; --green:#166534;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.5}
+.wrap{max-width:1120px;margin:0 auto;padding:44px 24px 80px}
+.eyebrow{font:11px "SFMono-Regular",Consolas,"Liberation Mono",monospace;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+h1{max-width:820px;font-size:clamp(28px,4vw,42px);line-height:1.12;letter-spacing:-.025em;
+  margin:0 0 10px;font-weight:650}
+h1 span{color:var(--text)}
+.sub{color:var(--muted);font-size:15px;max-width:760px;line-height:1.7;margin:0 0 24px}
+.result-strip{display:grid;grid-template-columns:repeat(3,1fr) 1.4fr;gap:10px;margin-bottom:18px}
+.result{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:13px 15px}
+.result .label{display:block;color:var(--muted);font:10px "SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.result .value{font:600 17px "SFMono-Regular",Consolas,"Liberation Mono",monospace}
+.result:last-child .value{color:var(--text)}
+@media(max-width:760px){.result-strip{grid-template-columns:1fr 1fr}.result:last-child{grid-column:1/-1}}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px}
+.scope-wrap{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:20px}
+@media(max-width:800px){.scope-wrap{grid-template-columns:1fr}}
+canvas{width:100%;display:block;background:#fff;border-radius:7px;border:1px solid var(--border)}
+.plot-note{display:flex;justify-content:space-between;gap:12px;color:var(--muted);
+  margin:9px 2px 0;font:11px "SFMono-Regular",Consolas,"Liberation Mono",monospace}
+.controls{display:flex;flex-direction:column;gap:17px}
+.section-title{font:11px "SFMono-Regular",Consolas,"Liberation Mono",monospace;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+.control label{display:flex;justify-content:space-between;font:11px "SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  color:var(--muted);margin-bottom:8px}
+.control label .val{color:var(--text);font-weight:600}
+input[type=range]{width:100%;-webkit-appearance:none;height:3px;border-radius:2px;background:#cfd4db;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--blue);border:2px solid var(--panel);box-shadow:0 0 0 1px var(--blue);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--blue);
+  border:2px solid var(--panel);box-shadow:0 0 0 1px var(--blue);cursor:pointer}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+button{font:11px "SFMono-Regular",Consolas,"Liberation Mono",monospace;background:#fff;color:var(--text);
+  border:1px solid var(--border);border-radius:6px;padding:8px 10px;cursor:pointer;transition:.15s ease}
+button:hover{border-color:#9aa3af;background:#f7f8fa}
+button.primary{background:#20242a;color:#fff;border-color:#20242a;font-weight:600}
+button.primary:hover{background:#11151a;border-color:#11151a;color:#fff}
+button.active{border-color:var(--blue);color:var(--blue)}
+.readout{font:11px "SFMono-Regular",Consolas,"Liberation Mono",monospace;color:var(--muted);
+  display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border)}
+.readout b{color:var(--green);font-weight:600}
+.equation{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:18px;line-height:1.8;
+  color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+  padding:15px 18px;margin-bottom:18px;overflow-x:auto}
+.equation .muted-eq{font-size:14px;color:var(--muted);font-family:Inter,ui-sans-serif,system-ui,sans-serif;margin-top:3px}
+.pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:0;overflow:hidden;border:1px solid var(--border);
+  border-radius:9px;background:var(--panel2)}
+.step{padding:14px 15px;min-height:76px;border-right:1px solid var(--border)}
+.step:last-child{border-right:0}
+.step-num{font:10px "SFMono-Regular",Consolas,"Liberation Mono",monospace;color:var(--blue);margin-bottom:5px}
+.step strong{font-size:12px;font-weight:600}.step small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+@media(max-width:760px){.pipeline{grid-template-columns:1fr 1fr}.step{border-bottom:1px solid var(--border)}}
+.insight{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);padding:0;overflow:hidden}
+@media(max-width:760px){.insight{grid-template-columns:1fr}}
+.insight>div{background:var(--panel);padding:20px}
+.insight h3{font-size:13px;margin:0 0 8px;font-weight:600}
+.insight p{color:var(--muted);font-size:13px;line-height:1.7;margin:0}
+.insight code{color:var(--accent);background:#0d1014;border:1px solid #252a31;padding:2px 5px;border-radius:4px;
+  font:12px "SFMono-Regular",Consolas,"Liberation Mono",monospace}
+.math-inline{font-family:"Cambria Math","STIX Two Math",Georgia,serif;color:#374151;background:transparent;border:0;padding:0;border-radius:0;font-size:1em}
 
-  :root{
-    --bg: #0B0F1A;
-    --panel: #111826;
-    --grid: #1D2637;
-    --text: #E7ECF5;
-    --dim: #7C8AA5;
-    --amber: #FFB86B;
-    --cyan: #5EEAD4;
-    --magenta: #F472B6;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
-    font-family:'Space Grotesk',sans-serif;}
-  .wrap{max-width:1040px;margin:0 auto;padding:48px 24px 96px;}
+.point-inspector{margin-top:4px;padding-top:14px;border-top:1px solid var(--border)}
+.inspector-title{font:11px "SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px}
+.inspector-empty{font-size:12px;color:var(--muted);line-height:1.55}
+.inspector-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px 12px}
+.inspector-row{font:11px "SFMono-Regular",Consolas,"Liberation Mono",monospace;color:var(--muted)}
+.inspector-row b{display:block;color:var(--text);font-weight:600;margin-top:2px}
+.inspector-row.full{grid-column:1/-1}
+.inspector-arrow{text-align:center;color:var(--muted);font:10px "SFMono-Regular",Consolas,"Liberation Mono",monospace;margin:8px 0}
+.selected-point{width:7px!important;height:7px!important;background:#dc2626;border-radius:50%;
+  box-shadow:0 0 0 3px rgba(220,38,38,.18)}
 
-  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.15em;
-    text-transform:uppercase;color:var(--amber);margin-bottom:10px;}
-  h1{font-size:clamp(28px,4vw,42px);line-height:1.15;margin:0 0 14px;font-weight:700;}
-  h1 span{color:var(--cyan);}
-  .sub{color:var(--dim);font-size:16px;max-width:640px;line-height:1.6;margin-bottom:40px;}
-
-  .panel{background:var(--panel);border:1px solid var(--grid);border-radius:14px;
-    padding:28px;margin-bottom:28px;}
-
-  .scope-wrap{display:grid;grid-template-columns:1fr 260px;gap:24px;}
-  @media(max-width:760px){.scope-wrap{grid-template-columns:1fr;}}
-
-  canvas{width:100%;display:block;background:#080B13;border-radius:10px;border:1px solid var(--grid);}
-
-  .controls{display:flex;flex-direction:column;gap:20px;}
-  .control label{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;
-    font-size:12px;color:var(--dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;}
-  .control label .val{color:var(--text);font-weight:700;}
-  input[type=range]{width:100%;-webkit-appearance:none;height:4px;border-radius:2px;
-    background:var(--grid);outline:none;}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;
-    border-radius:50%;background:var(--cyan);cursor:pointer;box-shadow:0 0 12px rgba(94,234,212,.6);}
-  input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;
-    background:var(--cyan);border:none;cursor:pointer;box-shadow:0 0 12px rgba(94,234,212,.6);}
-
-  .btnrow{display:flex;gap:10px;flex-wrap:wrap;}
-  button{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.05em;
-    text-transform:uppercase;background:transparent;color:var(--text);
-    border:1px solid var(--grid);border-radius:8px;padding:10px 14px;cursor:pointer;
-    transition:border-color .2s, color .2s;}
-  button:hover{border-color:var(--cyan);color:var(--cyan);}
-  button.primary{background:var(--cyan);color:#04241F;border-color:var(--cyan);font-weight:700;}
-  button.primary:hover{opacity:.9;color:#04241F;}
-  button.active{border-color:var(--magenta);color:var(--magenta);}
-
-  .readout{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);
-    display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--grid);}
-  .readout b{color:var(--cyan);font-weight:700;}
-
-  .insight{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
-  @media(max-width:760px){.insight{grid-template-columns:1fr;}}
-  .insight h3{font-size:15px;margin:0 0 10px;color:var(--amber);
-    font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.05em;}
-  .insight p{color:var(--dim);font-size:14px;line-height:1.7;margin:0;}
-  .insight code{color:var(--cyan);background:#0A0F1A;padding:2px 6px;border-radius:4px;
-    font-family:'JetBrains Mono',monospace;font-size:13px;}
-
-  .footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;
-    margin-top:8px;}
-  .badge{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);}
-  .badge b{color:var(--amber);}
+.footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:4px;padding:0 2px}
+.badge{font:10px "SFMono-Regular",Consolas,"Liberation Mono",monospace;color:var(--muted)}
+.badge b{color:var(--text)} a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <div class="eyebrow">Flam R&D / AI — Assignment Companion</div>
-  <h1>The curve was never bent.<br><span>It was just rotated.</span></h1>
-  <p class="sub">1500 scattered (x, y) points, three hidden variables, no visible order.
-  The equation looked like arbitrary distortion — until you rotate the frame back and
-  a plain sine wave falls out. Drag the sliders, or hit <b>Unrotate</b> to watch it happen.</p>
+  <div class="eyebrow">Flam R&D Assignment · Curve Parameter Recovery</div>
+
+  <h1>Parametric Curve Recovery</h1>
+
+  <p class="sub">
+    Interactive visualization of the transformation used to recover
+    <i>θ</i>, <i>M</i>, and <i>X</i> from the supplied points.
+  </p>
+
+  <div class="equation">
+    <div>
+      <i>v</i>(<i>t</i>) = e<sup>M|t|</sup> sin(0.3<i>t</i>)
+    </div>
+    <div class="muted-eq">
+      The observed curve is this underlying function after rotation by θ and translation by (X, 42).
+    </div>
+  </div>
+
+  <div class="result-strip">
+    <div class="result"><span class="label">theta</span><span class="value">30.0000°</span></div>
+    <div class="result"><span class="label">M</span><span class="value">0.030000</span></div>
+    <div class="result"><span class="label">X</span><span class="value">55.0000</span></div>
+    <div class="result"><span class="label">mean L1 distance</span><span class="value">≈ 0.010</span></div>
+  </div>
 
   <div class="panel">
     <div class="scope-wrap">
-      <canvas id="scope" width="900" height="560"></canvas>
+      <div>
+        <canvas id="scope" width="900" height="560"></canvas>
+        <div class="plot-note"><span id="frameLabel">fitted curve · observed points</span><span>t ∈ [6, 60]</span></div>
+      </div>
+
       <div class="controls">
+        <div class="section-title">Parameters</div>
+
         <div class="control">
-          <label>θ (theta) <span class="val" id="vTheta">30.0°</span></label>
+          <label>θ <span class="val" id="vTheta">30.0°</span></label>
           <input type="range" id="theta" min="0" max="50" step="0.1" value="30">
         </div>
         <div class="control">
@@ -101,42 +143,54 @@
         </div>
 
         <div class="btnrow">
-          <button class="primary" id="btnFit">Snap to fitted values</button>
-        </div>
-        <div class="btnrow">
-          <button id="btnRotate">Unrotate → reveal sine wave</button>
+          <button class="primary" id="btnFit">Reset to fitted values</button>
+          <button id="btnRotate">Show inverse transform</button>
         </div>
 
-        <div class="readout">
-          <span>mean L1 residual</span><b id="l1out">—</b>
-        </div>
-        <div class="readout">
-          <span>points shown</span><b>250 / 1500</b>
+        <div class="readout"><span>mean nearest-point L1</span><b id="l1out">—</b></div>
+        <div class="readout"><span>points displayed</span><b>250 / 1500</b></div>
+
+        <div class="point-inspector" id="pointInspector">
+          <div class="inspector-title">Point inspector</div>
+          <div class="inspector-empty">Click a point on the graph to inspect its inverse transformation.</div>
         </div>
       </div>
     </div>
   </div>
 
+  <div class="panel">
+    <div class="section-title">Solution pipeline</div>
+    <div class="pipeline">
+      <div class="step"><div class="step-num">01</div><strong>Observed points</strong><small>(x, y), shuffled</small></div>
+      <div class="step"><div class="step-num">02</div><strong>Undo translation</strong><small>subtract (X, 42)</small></div>
+      <div class="step"><div class="step-num">03</div><strong>Show inverse transform</strong><small>rotate by −θ</small></div>
+      <div class="step"><div class="step-num">04</div><strong>Recover t</strong><small>u = t</small></div>
+      <div class="step"><div class="step-num">05</div><strong>Fit 3 parameters</strong><small>DE → least squares</small></div>
+    </div>
+  </div>
+
   <div class="panel insight">
     <div>
-      <h3>01 — What's actually hidden here</h3>
-      <p>Strip out θ and the translation, and the equation is just
-      <code>v(t) = e^(M|t|)·sin(0.3t)</code> — an amplitude-modulated sine wave,
-      the most ordinary signal there is. Everything else is a 2D rotation and a shift
-      dressed on top to obscure it.</p>
+      <h3>Why the transformation matters</h3>
+      <p>
+        After undoing the translation and rotation, the first coordinate becomes
+        <span class="math-inline"><i>u</i> = <i>t</i></span> and the second becomes <span class="math-inline"><i>v</i>(<i>t</i>) = e<sup>M|t|</sup> sin(0.3<i>t</i>)</span>.
+        The apparent complexity is therefore mostly a coordinate transformation.
+      </p>
     </div>
     <div>
-      <h3>02 — Why order didn't matter</h3>
-      <p>The 1500 points arrived shuffled, not traced in order. Rotating each point
-      backward by <code>−θ</code> recovers its own <code>t</code> directly —
-      <code>u = (x−X)cosθ + (y−42)sinθ</code> — so no per-point unknowns were needed,
-      just one global (θ, M, X) fit.</p>
+      <h3>Why point order does not matter</h3>
+      <p>
+        The shuffled rows do not need to be reconstructed into a sequence.
+        For a candidate <span class="math-inline">(<i>θ</i>, <i>M</i>, <i>X</i>)</span>, each point gives its own
+        <span class="math-inline"><i>t</i></span> directly. The optimization only searches over the three global parameters.
+      </p>
     </div>
   </div>
 
   <div class="footer">
-    <div class="badge">Fitted: <b>θ = 30.0°</b> · <b>M = 0.0300</b> · <b>X = 55.0</b> · mean L1 ≈ <b>0.010</b></div>
-    <div class="badge">github.com/Shivanipkulkarni/flam-curve-fit</div>
+    <div class="badge">Python fit: <b>θ = 30.0°</b> · <b>M = 0.0300</b> · <b>X = 55.0</b></div>
+    <div class="badge"><a href="https://github.com/Shivanipkulkarni/flam-curve-fit" target="_blank" rel="noopener">View source on GitHub ↗</a></div>
   </div>
 
 </div>
@@ -160,9 +214,11 @@ const vX = document.getElementById('vX');
 const l1out = document.getElementById('l1out');
 const btnFit = document.getElementById('btnFit');
 const btnRotate = document.getElementById('btnRotate');
+const pointInspector = document.getElementById('pointInspector');
 
 let rotateProgress = 0; // 0 = normal frame, 1 = fully unrotated (u,v) frame
 let animating = false;
+let selectedIndex = -1;
 
 function v_of(t, M){ return Math.exp(M*Math.abs(t)) * Math.sin(0.3*t); }
 
@@ -203,7 +259,7 @@ function project(x, y, xr, yr){
 }
 
 function drawGrid(){
-  ctx.strokeStyle = '#1D2637';
+  ctx.strokeStyle = '#e3e6ea';
   ctx.lineWidth = 1;
   for(let i=0;i<=10;i++){
     const gx = 60 + i*(W-120)/10;
@@ -211,6 +267,48 @@ function drawGrid(){
     const gy = 40 + i*(H-80)/10;
     ctx.beginPath(); ctx.moveTo(60,gy); ctx.lineTo(W-60,gy); ctx.stroke();
   }
+}
+
+
+function updateInspector(){
+  if(!pointInspector) return;
+
+  if(selectedIndex < 0){
+    pointInspector.innerHTML = `
+      <div class="inspector-title">Point inspector</div>
+      <div class="inspector-empty">Click a point on the graph to inspect its inverse transformation.</div>`;
+    return;
+  }
+
+  const theta = parseFloat(thetaEl.value);
+  const M = parseFloat(MEl.value);
+  const X = parseFloat(XEl.value);
+  const rad = theta*Math.PI/180;
+
+  const x = DATA_X[selectedIndex];
+  const y = DATA_Y[selectedIndex];
+
+  const u = (x-X)*Math.cos(rad) + (y-42)*Math.sin(rad);
+  const w = -(x-X)*Math.sin(rad) + (y-42)*Math.cos(rad);
+  const predicted = v_of(u, M);
+  const residual = w - predicted;
+  const l1 = Math.abs(residual);
+
+  pointInspector.innerHTML = `
+    <div class="inspector-title">Point inspector · #${selectedIndex+1}</div>
+    <div class="inspector-grid">
+      <div class="inspector-row"><span>observed x</span><b>${x.toFixed(3)}</b></div>
+      <div class="inspector-row"><span>observed y</span><b>${y.toFixed(3)}</b></div>
+    </div>
+    <div class="inspector-arrow">inverse translate + rotate by −θ ↓</div>
+    <div class="inspector-grid">
+      <div class="inspector-row"><span>u</span><b>${u.toFixed(4)}</b></div>
+      <div class="inspector-row"><span>w</span><b>${w.toFixed(4)}</b></div>
+      <div class="inspector-row"><span>recovered t</span><b>${u.toFixed(4)}</b></div>
+      <div class="inspector-row"><span>model v(t)</span><b>${predicted.toFixed(4)}</b></div>
+      <div class="inspector-row full"><span>residual · w − v(t)</span><b>${residual.toFixed(6)}</b></div>
+      <div class="inspector-row full"><span>point L1</span><b>${l1.toFixed(6)}</b></div>
+    </div>`;
 }
 
 function render(){
@@ -226,6 +324,7 @@ function render(){
 
   const rad = theta*Math.PI/180;
   const p = rotateProgress;
+  const frameLabel = document.getElementById('frameLabel');
 
   // Build the two representations: rotated (real) frame and unrotated (u,v) frame.
   const n = 400;
@@ -256,18 +355,33 @@ function render(){
 
   // data points (fade out as we unrotate, since they only exist in real frame)
   ctx.globalAlpha = 1-p;
-  ctx.fillStyle = '#F472B633';
+  ctx.fillStyle = '#9ca3af66';
   DATA_X.forEach((dx,i)=>{
     const [px,py] = project(dx, DATA_Y[i], xr, yr);
     ctx.beginPath(); ctx.arc(px,py,2.4,0,7); ctx.fill();
   });
   ctx.globalAlpha = 1;
 
+  if(selectedIndex >= 0){
+    const sx = DATA_X[selectedIndex];
+    const sy = DATA_Y[selectedIndex];
+    const [spx,spy] = project(
+      sx*(1-p) + ((sx-X)*Math.cos(rad)+(sy-42)*Math.sin(rad)+X)*p,
+      sy*(1-p) + (-(sx-X)*Math.sin(rad)+(sy-42)*Math.cos(rad)+42)*p,
+      xr, yr
+    );
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath(); ctx.arc(spx,spy,5,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(spx,spy,8,0,Math.PI*2); ctx.stroke();
+  }
+
   // curve
-  ctx.strokeStyle = p<0.5 ? '#5EEAD4' : '#F472B6';
+  ctx.strokeStyle = '#2563eb';
   ctx.lineWidth = 2.4;
-  ctx.shadowColor = ctx.strokeStyle;
-  ctx.shadowBlur = 10;
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
   ctx.beginPath();
   mixed.forEach((pt,i)=>{
     const [px,py] = project(pt[0], pt[1], xr, yr);
@@ -277,20 +391,29 @@ function render(){
   ctx.shadowBlur = 0;
 
   // label
-  ctx.fillStyle = '#7C8AA5';
+  ctx.fillStyle = '#68717d';
   ctx.font = '12px "JetBrains Mono", monospace';
-  ctx.fillText(p<0.05 ? 'rotated frame — the puzzle as given' :
-               p>0.95 ? 'unrotated frame — v(t) = e^(M|t|)·sin(0.3t)' :
-               'unrotating…', 70, 30);
+  ctx.fillText(p<0.05 ? 'observed frame' :
+               p>0.95 ? 'inverse-transformed frame' :
+               'applying inverse rotation…', 70, 30);
+  if(frameLabel){
+    frameLabel.textContent = p<0.05 ? 'fitted curve · observed points' :
+      p>0.95 ? 'underlying curve · recovered coordinates' :
+      'transforming coordinates…';
+  }
 
   l1out.textContent = meanL1(theta, M, X).toFixed(4);
 }
 
-[thetaEl, MEl, XEl].forEach(el => el.addEventListener('input', render));
+[thetaEl, MEl, XEl].forEach(el => el.addEventListener('input', ()=>{
+  render();
+  updateInspector();
+}));
 
 btnFit.addEventListener('click', ()=>{
   thetaEl.value = FIT.theta; MEl.value = FIT.M; XEl.value = FIT.X;
   render();
+  updateInspector();
 });
 
 btnRotate.addEventListener('click', ()=>{
@@ -312,9 +435,69 @@ btnRotate.addEventListener('click', ()=>{
   requestAnimationFrame(step);
 });
 
+
+cv.addEventListener('click', (event)=>{
+  const rect = cv.getBoundingClientRect();
+  const scaleX = cv.width / rect.width;
+  const scaleY = cv.height / rect.height;
+  const cx = (event.clientX - rect.left) * scaleX;
+  const cy = (event.clientY - rect.top) * scaleY;
+
+  const theta = parseFloat(thetaEl.value);
+  const M = parseFloat(MEl.value);
+  const X = parseFloat(XEl.value);
+  const rad = theta*Math.PI/180;
+  const p = rotateProgress;
+
+  // Selection is performed against the displayed observed points.
+  const realPts = [];
+  for(let i=0;i<DATA_X.length;i++){
+    const x = DATA_X[i], y = DATA_Y[i];
+    const ux = (x-X)*Math.cos(rad) + (y-42)*Math.sin(rad);
+    const uy = -(x-X)*Math.sin(rad) + (y-42)*Math.cos(rad);
+    // Match the same visual interpolation used by render().
+    const vx = ux + X;
+    const vy = uy + 42;
+    realPts.push([
+      x*(1-p) + vx*p,
+      y*(1-p) + vy*p
+    ]);
+  }
+
+  // Recreate the current plot bounds used by render().
+  const curve = curvePoints(theta, M, X, 400);
+  const unrotCurve = curve.map(pt=>{
+    const t = pt[2], vv = pt[3];
+    return [t+X, 42+vv];
+  });
+  const mixed = curve.map((pt,i)=>[
+    pt[0]*(1-p) + unrotCurve[i][0]*p,
+    pt[1]*(1-p) + unrotCurve[i][1]*p
+  ]);
+  const allX = mixed.map(pp=>pp[0]).concat(DATA_X);
+  const allY = mixed.map(pp=>pp[1]).concat(DATA_Y);
+  const xr = [Math.min(...allX)-5, Math.max(...allX)+5];
+  const yr = [Math.min(...allY)-5, Math.max(...allY)+5];
+
+  let best = Infinity, bestIndex = -1;
+  for(let i=0;i<realPts.length;i++){
+    const [px,py] = project(realPts[i][0], realPts[i][1], xr, yr);
+    const d2 = (px-cx)*(px-cx) + (py-cy)*(py-cy);
+    if(d2 < best){ best = d2; bestIndex = i; }
+  }
+
+  // Only select when the click is reasonably close to a displayed point.
+  if(bestIndex >= 0 && best <= 18*18){
+    selectedIndex = bestIndex;
+    updateInspector();
+    render();
+  }
+});
+
 // init to fitted values
 thetaEl.value = FIT.theta; MEl.value = FIT.M; XEl.value = FIT.X;
 render();
+updateInspector();
 </script>
 </body>
 </html>
