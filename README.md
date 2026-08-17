@@ -4,59 +4,23 @@
 
 Recover the 3 unknown parameters $\theta$, $M$, and $X$ given points that lie on the following parametric curve.
 
-$$
-x(t) =
-t\cos(\theta)
--
-e^{M|t|}\sin(0.3t)\sin(\theta)
-+
-X
-$$
+$$x(t) = t\cos(\theta) - e^{M|t|}\sin(0.3t)\sin(\theta) + X$$
 
-$$
-y(t) =
-42
-+
-t\sin(\theta)
-+
-e^{M|t|}\sin(0.3t)\cos(\theta)
-$$
+$$y(t) = 42 + t\sin(\theta) + e^{M|t|}\sin(0.3t)\cos(\theta)$$
 
 with the constraints:
 
-$$
-0^\circ < \theta < 50^\circ
-$$
-
-$$
--0.05 < M < 0.05
-$$
-
-$$
-0 < X < 100
-$$
+$$0^\circ < \theta < 50^\circ, \qquad -0.05 < M < 0.05, \qquad 0 < X < 100$$
 
 and
 
-$$
-6 < t < 60
-$$
+$$6 < t < 60$$
 
 Points are sampled from this curve and provided in `xy_data.csv`. The rows are not assumed to be ordered according to the underlying parameter $t$.
 
 The final recovered parameters are:
 
-$$
-\boxed{\theta = 30^\circ}
-$$
-
-$$
-\boxed{M = 0.03}
-$$
-
-$$
-\boxed{X = 55}
-$$
+$$\boxed{\theta = 30^\circ, \quad M = 0.03, \quad X = 55}$$
 
 ---
 
@@ -66,27 +30,11 @@ The key observation is that the given curve can be viewed as a simple parametric
 
 Define
 
-$$
-v(t) = e^{M|t|}\sin(0.3t)
-$$
+$$v(t) = e^{M|t|}\sin(0.3t)$$
 
-Then the parametric equation can be written as:
+Then the parametric equation can be written as a rotation matrix applied to $(t, v(t))$, followed by translation by $(X, 42)$:
 
-$$
-\begin{bmatrix}
-x-X \\
-y-42
-\end{bmatrix}
-=
-\begin{bmatrix}
-\cos\theta & -\sin\theta \\
-\sin\theta & \cos\theta
-\end{bmatrix}
-\begin{bmatrix}
-t \\
-v(t)
-\end{bmatrix}
-$$
+$$\begin{bmatrix} x-X \\ y-42 \end{bmatrix} = \begin{bmatrix} \cos\theta & -\sin\theta \\ \sin\theta & \cos\theta \end{bmatrix} \begin{bmatrix} t \\ v(t) \end{bmatrix}$$
 
 This gives us a crucial simplification. Instead of treating all the $t_i$ values as additional unknowns, we can invert this transformation and recover them directly.
 
@@ -98,32 +46,13 @@ For a candidate value of $\theta$ and $X$, translate all observed points by $(-X
 
 For a point $(x_i,y_i)$, define:
 
-$$
-u_i =
-(x_i-X)\cos\theta
-+
-(y_i-42)\sin\theta
-$$
+$$u_i = (x_i-X)\cos\theta + (y_i-42)\sin\theta$$
 
-$$
-w_i =
--(x_i-X)\sin\theta
-+
-(y_i-42)\cos\theta
-$$
+$$w_i = -(x_i-X)\sin\theta + (y_i-42)\cos\theta$$
 
 Because this is the inverse of the original rotation:
 
-$$
-u_i = t_i
-$$
-
-and
-
-$$
-w_i =
-e^{M|t_i|}\sin(0.3t_i)
-$$
+$$u_i = t_i \qquad \text{and} \qquad w_i = e^{M|t_i|}\sin(0.3t_i)$$
 
 This is particularly useful because we no longer need to estimate each $t_i$ as a separate optimization variable.
 
@@ -133,39 +62,17 @@ The points can therefore be processed without relying on their original ordering
 
 ## 4. Optimization Objective
 
-For candidate parameters
+For candidate parameters $(\theta,M,X)$, the recovered coordinates are $t_i = u_i$, and the model predicts:
 
-$$
-(\theta,M,X)
-$$
-
-the recovered coordinates are:
-
-$$
-t_i=u_i
-$$
-
-and the model predicts:
-
-$$
-\hat w_i =
-e^{M|u_i|}
-\sin(0.3u_i)
-$$
+$$\hat w_i = e^{M|u_i|}\sin(0.3u_i)$$
 
 The residual for each point is:
 
-$$
-r_i =
-w_i-\hat w_i
-$$
+$$r_i = w_i - \hat w_i$$
 
 The optimization objective is therefore:
 
-$$
-\min_{\theta,M,X}
-\sum_i r_i^2
-$$
+$$\min_{\theta,M,X} \sum_i r_i^2$$
 
 subject to the parameter bounds specified in the assignment.
 
@@ -223,43 +130,19 @@ The fitted curve also produces a very small residual, indicating that the recove
 
 ## 7. Validation
 
-Once the parameters are fitted, the curve can be reconstructed on a uniform grid:
-
-$$
-t \in [6,60]
-$$
-
-using 2000 uniformly spaced samples.
+Once the parameters are fitted, the curve can be reconstructed on a uniform grid $t \in [6,60]$ using 2000 uniformly spaced samples.
 
 The reconstructed curve is:
 
-$$
-x_{\mathrm{pred}}(t)
-=
-t\cos\theta
--
-e^{M|t|}\sin(0.3t)\sin\theta
-+
-X
-$$
+$$x_{\mathrm{pred}}(t) = t\cos\theta - e^{M|t|}\sin(0.3t)\sin\theta + X$$
 
-$$
-y_{\mathrm{pred}}(t)
-=
-42
-+
-t\sin\theta
-+
-e^{M|t|}\sin(0.3t)\cos\theta
-$$
+$$y_{\mathrm{pred}}(t) = 42 + t\sin\theta + e^{M|t|}\sin(0.3t)\cos\theta$$
 
 As an additional validation measure, the implementation computes the mean nearest-point L1 distance from the supplied points to the uniformly sampled reconstruction of the fitted curve.
 
 The current implementation obtains a mean L1 distance of approximately:
 
-$$
-\boxed{0.010}
-$$
+$$\boxed{0.010}$$
 
 This provides a numerical indication of how closely the reconstructed curve matches the supplied data.
 
@@ -271,17 +154,9 @@ A direct optimization approach could treat every point's $t_i$ as an additional 
 
 However, the inverse rotation gives us a way to recover each $t_i$ directly, so these values do not need to be included in the optimization.
 
-Instead of solving for:
+Instead of solving for $\theta,M,X,t_1,t_2,\ldots,t_n$, we only need to search over:
 
-$$
-\theta,M,X,t_1,t_2,\ldots,t_n
-$$
-
-we only need to search over:
-
-$$
-\boxed{\theta,M,X}
-$$
+$$\boxed{\theta,M,X}$$
 
 This greatly simplifies the problem and also makes the solution independent of the ordering of the input points.
 
@@ -315,15 +190,7 @@ The interactive explainer also allows individual data points to be inspected.
 
 Clicking a point displays its transformation through the fitted model:
 
-$$
-(x_i,y_i)
-
-ightarrow
-(u_i,w_i)
-
-ightarrow
-(t_i,v(t_i))
-$$
+$$(x_i,y_i) \rightarrow (u_i,w_i) \rightarrow (t_i,v(t_i))$$
 
 For the selected point, the visualization shows:
 
@@ -371,12 +238,6 @@ The script prints:
 
 The recovered unknown parameters are:
 
-$$
-\boxed{
-\theta=30^\circ,\qquad
-M=0.03,\qquad
-X=55
-}
-$$
+$$\boxed{\theta=30^\circ, \qquad M=0.03, \qquad X=55}$$
 
 The solution is based on recognizing that the observed shape can be represented as a one-dimensional parametric curve that has been rotated and translated. By applying the inverse transformation, the individual $t_i$ values can be recovered directly, reducing the parameter recovery problem to a bounded 3-variable optimization.
